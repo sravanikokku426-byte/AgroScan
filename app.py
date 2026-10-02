@@ -1,4 +1,5 @@
 import json
+import time
 import streamlit as st
 from google import genai 
 from google.genai import types 
@@ -34,14 +35,30 @@ def render_message(message):
 def add_message(role, kind, content):
     st.session_state.messages.append({"role": role, "kind": kind, "content": content})
     render_message(st.session_state.messages[-1])
+
+
+
+
 def ask_gemini(parts):
-    try:
-        return st.session_state.chat.send_message(parts).text
-    except Exception as error:
-        return f"Sorry, something went wrong: {error}"
+    for attempt in range(3):
+        try:
+            response = st.session_state.chat.send_message(parts)
+            return response.text
 
+        except Exception as error:
+            error_message = str(error)
 
+            if "503" in error_message or "UNAVAILABLE" in error_message:
+                if attempt < 2:
+                    time.sleep(5)
+                    continue
 
+                return (
+                    "The AI service is temporarily busy. 🌱 "
+                    "Please try again in a few moments."
+                )
+
+            return f"Sorry, something went wrong: {error_message}"
 
  
 
@@ -106,9 +123,9 @@ with header_col:
     st.title("AgroScan 🌱")
         
 with button_col:
-    send_disabled = len(st.session_state.messages) <= 2
+    send_disabled = len(st.session_state.messages) <= 1
     if st.button("📤 Send to WhatsApp", disabled=send_disabled, use_container_width=True):
-        with st.spinner("Summarizing your day..."):
+        with st.spinner("Summarizing your crop analysis..."):
             summary = ask_gemini([SUMMARY_REQUEST_PROMPT])
         success, info = send_whatsapp(st.session_state.whatsapp_number, st.session_state.name, summary)
         if success:
@@ -124,7 +141,7 @@ else:
     for message in st.session_state.messages:
         render_message(message)
 user_input = st.chat_input(
-    "Ask a question, or attach a photo of your meal",
+    "Ask a question, or attach a photo of your crop",
     accept_file=True,
     file_type=["jpg", "jpeg", "png"],
 )
@@ -140,9 +157,12 @@ if user_input:
         add_message("user", "text", text)
         parts.append(text)
     elif photo is not None:
-        parts.append("What is this meal? Give me the calories and macros.")
+        parts.append("Analyze this crop image. Identify the visible crop symptoms, "
+        "possible pesticide-related damage, possible pests or diseases, "
+        "and recommend the next step. Do not estimate pesticide concentration "
+        "from the image.")
  
-    with st.spinner("Crunching the numbers..."):
+    with st.spinner("Analyzing your crop..."):
         answer = ask_gemini(parts)
     add_message("assistant", "text", answer)
 
