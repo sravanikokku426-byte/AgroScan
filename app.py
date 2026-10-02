@@ -5,7 +5,7 @@ from google import genai
 from google.genai import types 
 from twilio.rest import Client as TwilioClient
 from prompts import SYSTEM_PROMPT,WELCOME_MESSAGE_TEMPLATE,SUMMARY_REQUEST_PROMPT
-MODEL_NAME="gemini-3.8-flash"
+MODEL_NAME="gemini-3.5-flash-lite"
 st.set_page_config(page_title="AgroScan", page_icon=" 🌱")
 
 GEMINI_API_KEY=st.secrets["GEMINI_API_KEY"]
